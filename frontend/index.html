@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkTask | Decentralized Todo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1>LinkTask</h1>
+      <div class="subtitle">Decentralized Task Management</div>
+      <div id="walletStatus">Connecting...</div>
+    </header>
+
+    <div class="input-group">
+      <input type="text" id="taskInput" placeholder="What needs to be done?" autocompleter="off">
+      <button id="addBtn" class="btn-primary">Add Task</button>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="active">Active</button>
+      <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+
+    <ul id="taskList" class="task-list">
+      <!-- Tasks will be injected here -->
+    </ul>
+    <div id="loading" class="loading-spinner" style="display: none;"></div>
+  </div>
+
+  <!-- MUST LOAD FIRST -->
+  <script src="libs/ethers.min.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
