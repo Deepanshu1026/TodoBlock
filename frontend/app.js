@@ -4,7 +4,7 @@ if (typeof ethers === "undefined") {
   throw new Error("ethers not loaded");
 }
 
-const CONTRACT_ADDRESS = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
+const CONTRACT_ADDRESS = "0xCa24B9A11D485623549722cA6683D90466F84b20";
 
 const ABI = [
   "function addTask(string)",
@@ -40,6 +40,14 @@ async function init() {
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
     provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    // Check if connected to Sepolia
+    const { chainId } = await provider.getNetwork();
+    if (chainId !== 11155111) {
+      alert("Please connect your wallet to the Sepolia testnet");
+      // Continue anyway, but warn
+    }
+
     signer = provider.getSigner();
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
@@ -163,7 +171,12 @@ async function addTask() {
     loadTasks();
   } catch (err) {
     console.error(err);
-    alert("Error adding task");
+    // Extract meaningful error message
+    let errorMessage = "Error adding task";
+    if (err.reason) errorMessage += ": " + err.reason;
+    else if (err.message) errorMessage += ": " + err.message;
+
+    alert(errorMessage);
   } finally {
     btn.innerText = originalText;
     btn.disabled = false;
