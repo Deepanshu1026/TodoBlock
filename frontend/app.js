@@ -4,7 +4,7 @@ if (typeof ethers === "undefined") {
   throw new Error("ethers not loaded");
 }
 
-const CONTRACT_ADDRESS = "0xCa24B9A11D485623549722cA6683D90466F84b20";
+const CONTRACT_ADDRESS = "0x56Aeb666606d6BE91142EF514cf42bEE95915791";
 
 const ABI = [
   "function addTask(string)",
