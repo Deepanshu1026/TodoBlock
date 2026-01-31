@@ -34,58 +34,83 @@ async function init() {
     walletStatus.innerText = "Need MetaMask";
     walletStatus.style.background = "#fee2e2";
     walletStatus.style.color = "#ef4444";
-    alert("MetaMask not detected");
+    // alert("MetaMask not detected"); // Don't annoy user immediately
     return;
   }
+
+  // Reliable RPC for reading data (Official Sepolia RPC)
+  const readProvider = new ethers.providers.JsonRpcProvider("https://rpc.sepolia.org");
+  readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+
+  // Setup interaction with Wallet
+  provider = new ethers.providers.Web3Provider(window.ethereum);
+
+  // 1. Check if ALREADY connected
+  const accounts = await provider.listAccounts();
+  if (accounts.length > 0) {
+    await connectWallet();
+  } else {
+    // 2. Show Connect Button
+    walletStatus.innerHTML = '<button id="connectBtn" style="background:none; border:none; color:inherit; cursor:pointer; font:inherit; padding:0; text-decoration:underline;">Connect Wallet</button>';
+    walletStatus.onclick = connectWallet;
+  }
+
+  // Event Listeners
+  document.getElementById("addBtn").onclick = addTask;
+  document.getElementById("taskInput").onkeypress = (e) => {
+    if (e.key === 'Enter') addTask();
+  };
+
+  // Filters
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      loadTasks();
+    }
+  });
+
+  // Always load tasks (read-only mode works even without wallet)
+  loadTasks();
+}
+
+async function connectWallet() {
+  const walletStatus = document.getElementById("walletStatus");
 
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
-    // Reliable RPC for reading data (Switched to public node to avoid Rate Limit/RPM issues)
-    const readProvider = new ethers.providers.JsonRpcProvider("https://ethereum-sepolia.publicnode.com");
-    readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
-
-    // Wallet provider for signing transactions
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-
-    // Check if connected to Sepolia
+    // Check network
     const { chainId } = await provider.getNetwork();
     if (chainId !== 11155111) {
       alert("Please connect your wallet to the Sepolia testnet");
+      // Optional: Try to switch network automatically
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaa36a7' }], // 11155111 in hex
+        });
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask.
+        if (switchError.code === 4902) {
+          alert("Please add Sepolia network to MetaMask");
+        }
+      }
     }
 
     signer = provider.getSigner();
-
-    // Contract instance for WRITING (uses signer)
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
     const address = await signer.getAddress();
+    walletStatus.onclick = null; // Remove connect handler
     walletStatus.innerText = "Connected: " + address.substring(0, 6) + "..." + address.substring(38);
     walletStatus.style.background = "#dbeafe";
     walletStatus.style.color = "#2563eb";
 
-    // Event Listeners
-    document.getElementById("addBtn").onclick = addTask;
-    document.getElementById("taskInput").onkeypress = (e) => {
-      if (e.key === 'Enter') addTask();
-    };
-
-    // Filters
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        loadTasks();
-      }
-    });
-
-    loadTasks();
   } catch (err) {
-    console.error("Wallet connection failed:", err);
-    walletStatus.innerText = "Error Connecting";
-    walletStatus.style.background = "#fee2e2";
-    walletStatus.style.color = "#ef4444";
+    console.error("Connection rejected", err);
+    walletStatus.innerText = "Connect Wallet";
   }
 }
 
