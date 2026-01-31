@@ -39,4 +39,8 @@ contract Todo {
     function getTasksCount() public view returns (uint) {
         return tasks.length;
     }
+
+    function getTasks() public view returns (Task[] memory) {
+        return tasks;
+    }
 }

@@ -4,7 +4,7 @@ if (typeof ethers === "undefined") {
   throw new Error("ethers not loaded");
 }
 
-const CONTRACT_ADDRESS = "0x56Aeb666606d6BE91142EF514cf42bEE95915791";
+const CONTRACT_ADDRESS = "0x16E8cbeBF3fAd93A3565b42527BC3CD6d4554d18";
 
 const ABI = [
   "function addTask(string)",
@@ -12,12 +12,14 @@ const ABI = [
   "function deleteTask(uint256)",
   "function editTask(uint256, string)",
   "function tasks(uint256) view returns (string, bool, bool)",
-  "function getTasksCount() view returns (uint256)"
+  "function getTasksCount() view returns (uint256)",
+  "function getTasks() view returns (tuple(string text, bool completed, bool deleted)[])"
 ];
 
 let provider;
 let signer;
 let contract;
+let readContract;
 let currentFilter = 'all';
 
 // Icons
@@ -39,16 +41,22 @@ async function init() {
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
+    // Reliable RPC for reading data
+    const readProvider = new ethers.providers.JsonRpcProvider("https://ethereum-sepolia.publicnode.com");
+    readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
+
+    // Wallet provider for signing transactions
     provider = new ethers.providers.Web3Provider(window.ethereum);
 
     // Check if connected to Sepolia
     const { chainId } = await provider.getNetwork();
     if (chainId !== 11155111) {
       alert("Please connect your wallet to the Sepolia testnet");
-      // Continue anyway, but warn
     }
 
     signer = provider.getSigner();
+
+    // Contract instance for WRITING (uses signer)
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
 
     const address = await signer.getAddress();
@@ -91,24 +99,21 @@ async function loadTasks() {
   }
 
   try {
-    const countBig = await contract.getTasksCount();
-    const count = countBig.toNumber();
+    // NEW WAY: Get all tasks in ONE call using reliable Read Provider
+    const tasksRaw = await readContract.getTasks();
 
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
-      const taskData = await contract.tasks(i);
-      tasks.push({
-        id: i,
-        text: taskData[0],
-        completed: taskData[1],
-        deleted: taskData[2]
-      });
-    }
+    const tasks = tasksRaw.map((t, i) => ({
+      id: i,
+      text: t.text,
+      completed: t.completed,
+      deleted: t.deleted
+    }));
 
     renderTasks(tasks, list);
 
   } catch (err) {
     console.error("Error loading tasks", err);
+    // Silent fail or show toast?
   } finally {
     loading.style.display = "none";
   }
