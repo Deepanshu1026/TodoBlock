@@ -38,12 +38,23 @@ async function init() {
     return;
   }
 
-  // Reliable RPC for reading data (Official Sepolia RPC)
-  const readProvider = new ethers.providers.JsonRpcProvider("https://rpc.sepolia.org");
+  // Reliable RPC for reading data (Using 1RPC to prevent rate limits)
+  const readProvider = new ethers.providers.JsonRpcProvider("https://1rpc.io/sepolia");
   readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
 
   // Setup interaction with Wallet
-  provider = new ethers.providers.Web3Provider(window.ethereum);
+  // Passing "any" helps avoid "underlying network changed" errors by allowing the network to change
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+  // Force page reload on network change (Best practice for DApps)
+  provider.on("network", (newNetwork, oldNetwork) => {
+    // When a Provider makes its initial connection, it emits a "network"
+    // event with a null oldNetwork. The value is the new network.
+    // So, if oldNetwork exists, it represents a changing network
+    if (oldNetwork) {
+      window.location.reload();
+    }
+  });
 
   // 1. Check if ALREADY connected
   const accounts = await provider.listAccounts();
@@ -81,6 +92,9 @@ async function connectWallet() {
   try {
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
+    // Refresh provider to capturing any state changes since load
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
     // Check network
     const { chainId } = await provider.getNetwork();
     if (chainId !== 11155111) {
@@ -91,6 +105,9 @@ async function connectWallet() {
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: '0xaa36a7' }], // 11155111 in hex
         });
+        // If switch successful, reload to ensure clean state
+        window.location.reload();
+        return;
       } catch (switchError) {
         // This error code indicates that the chain has not been added to MetaMask.
         if (switchError.code === 4902) {
@@ -118,6 +135,8 @@ async function loadTasks() {
   const list = document.getElementById("taskList");
   const loading = document.getElementById("loading");
 
+  console.log("Loading tasks..."); // DEBUG log
+
   // Show loading only if list is empty (first load)
   if (list.children.length === 0) {
     loading.style.display = "block";
@@ -126,6 +145,7 @@ async function loadTasks() {
   try {
     // NEW WAY: Get all tasks in ONE call using reliable Read Provider
     const tasksRaw = await readContract.getTasks();
+    console.log("Tasks loaded from chain:", tasksRaw); // DEBUG log
 
     const tasks = tasksRaw.map((t, i) => ({
       id: i,
@@ -137,8 +157,9 @@ async function loadTasks() {
     renderTasks(tasks, list);
 
   } catch (err) {
-    console.error("Error loading tasks", err);
-    // Silent fail or show toast?
+    console.error("Error loading tasks:", err);
+    // Alert user if reading fails consistently
+    alert("Failed to load tasks from blockchain. Check console for details.");
   } finally {
     loading.style.display = "none";
   }
