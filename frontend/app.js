@@ -42,7 +42,7 @@ async function init() {
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
     // Reliable RPC for reading data
-    const readProvider = new ethers.providers.JsonRpcProvider("https://ethereum-sepolia.publicnode.com");
+    const readProvider = new ethers.providers.JsonRpcProvider("https://eth-sepolia.g.alchemy.com/v2/DbzvUKLIw7Q48wfOhSuoo");
     readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
 
     // Wallet provider for signing transactions
